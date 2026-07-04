@@ -91,3 +91,12 @@ button:hover {
 canvas {
     display: block;
 }
+
+#colorBtn {
+    background: #4b5563; /* Sleek neutral gray */
+    color: white;
+}
+
+#colorBtn:hover {
+    background: #374151;
+}
