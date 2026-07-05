@@ -5,11 +5,12 @@ const sideInput = document.getElementById('sideCount');
 const skipInput = document.getElementById('skipCount');
 const speedInput = document.getElementById('speedCtrl');
 const glowInput = document.getElementById('glowCtrl');
-const colorButton = document.getElementById('colorBtn'); // New button
+const colorButton = document.getElementById('colorBtn'); 
 
 const sideVal = document.getElementById('sideVal');
 const skipVal = document.getElementById('skipVal');
 const glowVal = document.getElementById('glowVal');
+
 
 // Track the active color hue globally
 let currentHue = 280; 
