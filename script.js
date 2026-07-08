@@ -13,6 +13,8 @@ const sideVal = document.getElementById('sideVal');
 const skipVal = document.getElementById('skipVal');
 const glowVal = document.getElementById('glowVal');
 
+const exportButton = document.getElementById('exportBtn');
+
 // Track the active state globally
 let currentHue = 280; 
 let animationId = null;
@@ -148,3 +150,38 @@ function animate() {
         renderFrame(sides, 0); // Clean up the final render state
     }
 }
+
+exportButton.addEventListener('click', () => {
+    // Optional check: Ensure points exist before trying to download a blank canvas
+    if (points.length === 0) return;
+
+    // Create a temporary, off-screen canvas matching your exact canvas dimensions
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Draw a solid dark background on the temporary canvas to preserve the neon contrast
+    tempCtx.fillStyle = '#121214'; // Match this to your webpage container background color
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw your active canvas directly on top of that dark background
+    tempCtx.drawImage(canvas, 0, 0);
+
+    // Convert the merged image data into a downloadable PNG URL
+    const imageURL = tempCanvas.toDataURL('image/png');
+
+    // Create a temporary hidden link element to force-trigger the browser download download
+    const downloadLink = document.createElement('a');
+    downloadLink.href = imageURL;
+    
+    // Generate a clean, descriptive file name showing the shape settings
+    const sidesName = sideInput.value;
+    const skipName = skipInput.value;
+    downloadLink.download = `geometric-art-${sidesName}sides-skip${skipName}.png`;
+
+    // Programmatically click the link to save the file, then remove it from memory
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+});
