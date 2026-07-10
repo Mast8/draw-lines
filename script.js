@@ -39,14 +39,23 @@ colorButton.addEventListener('click', () => {
 });
 
 // Live updates on slider interaction
-sideInput.addEventListener('input', () => { updateSliders(); startDrawing(); });
-skipInput.addEventListener('input', () => { skipVal.innerText = skipInput.value; startDrawing(); });
-speedInput.addEventListener('input', () => {
-    // Dynamically alter speed mid-animation
-    totalSteps = 131 - parseInt(speedInput.value);
+sideInput.addEventListener('input', () => { 
+    updateSliders(); 
+    startDrawing(); 
 });
+
+skipInput.addEventListener('input', () => { 
+    skipVal.innerText = skipInput.value; 
+    startDrawing(); 
+});
+
+speedInput.addEventListener('input', () => {
+    // Safely alter speed mid-animation, ensuring steps never drop below 1
+    totalSteps = Math.max(1, 131 - parseInt(speedInput.value, 10));
+});
+
 glowInput.addEventListener('input', () => { 
-    glowAmount = parseInt(glowInput.value);
+    glowAmount = parseInt(glowInput.value, 10) || 0;
     glowVal.innerText = glowAmount;
     if (isAnimationComplete) renderFrame(sides, 0);
 });
@@ -60,18 +69,18 @@ function updateSliders() {
     sideVal.innerText = sideInput.value;
     
     // Mathematically restrict skip factor up to half of the side count
-    const maxSkip = Math.max(1, Math.floor(parseInt(sideInput.value) / 2));
+    const maxSkip = Math.max(1, Math.floor(parseInt(sideInput.value, 10) / 2));
     skipInput.max = maxSkip;
-    if (parseInt(skipInput.value) > maxSkip) {
+    if (parseInt(skipInput.value, 10) > maxSkip) {
         skipInput.value = maxSkip;
     }
     skipVal.innerText = skipInput.value;
 }
 
-// DRY Optimization: Reusable canvas state configurations
+// Reusable canvas state configurations
 function applyCanvasStyles() {
     const strokeColor = `hsl(${currentHue}, 95%, 60%)`;
-    ctx.shadowBlur = isAnimationComplete ? 0 : glowAmount; // Remove shadow blur calculation load if complete
+    ctx.shadowBlur = isAnimationComplete ? 0 : glowAmount; 
     if (!isAnimationComplete) ctx.shadowColor = strokeColor;
     
     ctx.lineWidth = 4;
@@ -84,17 +93,19 @@ function startDrawing() {
     if (animationId) cancelAnimationFrame(animationId);
     isAnimationComplete = false;
 
-    sides = parseInt(sideInput.value);
-    skip = parseInt(skipInput.value);
-    totalSteps = 131 - parseInt(speedInput.value); 
-    glowAmount = parseInt(glowInput.value);
+    sides = parseInt(sideInput.value, 10) || 3;
+    skip = parseInt(skipInput.value, 10) || 1;
+    // Defensive check to avoid 0 or negative steps
+    totalSteps = Math.max(1, 131 - parseInt(speedInput.value, 10)); 
+    glowAmount = parseInt(glowInput.value, 10) || 0;
 
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = 200; 
     
     points = [];
-    for (let i = 0; i <= sides; i++) {
+    // Changed loop to i < sides so we don't duplicate the start point or overrun array indices
+    for (let i = 0; i < sides; i++) {
         const angle = ((i * skip) * 2 * Math.PI / sides) - (Math.PI / 2);
         points.push({
             x: centerX + radius * Math.cos(angle),
@@ -107,26 +118,35 @@ function startDrawing() {
     animate();
 }
 
-// Shared renderer for clean code structure
+// Fixed rendering logic with reliable path closing and stroke execution
 function renderFrame(completedLines, progress = 0) {
+    if (points.length === 0) return;
+    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     applyCanvasStyles();
 
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     
+    // Draw fully completed lines
     for (let i = 1; i <= completedLines; i++) {
-        ctx.lineTo(points[i].x, points[i].y);
+        // Use modulo to safely wrap back to the start point cleanly
+        const pt = points[i % sides];
+        ctx.lineTo(pt.x, pt.y);
     }
 
-    if (completedLines < sides && progress > 0) {
-        const startPt = points[completedLines];
-        const endPt = points[completedLines + 1];
-        const currentX = startPt.x + (endPt.x - startPt.x) * progress;
-        const currentY = startPt.y + (endPt.y - startPt.y) * progress;
-        ctx.lineTo(currentX, currentY);
-        ctx.stroke();
-    } else if (completedLines >= sides) {
+    // Handle actively animating line segment
+    if (completedLines < sides) {
+        const startPt = points[completedLines % sides];
+        const endPt = points[(completedLines + 1) % sides];
+        
+        if (progress > 0 && endPt) {
+            const currentX = startPt.x + (endPt.x - startPt.x) * progress;
+            const currentY = startPt.y + (endPt.y - startPt.y) * progress;
+            ctx.lineTo(currentX, currentY);
+        }
+        ctx.stroke(); // CRITICAL FIX: Ensure stroke happens even if progress is 0
+    } else {
         ctx.closePath();
         ctx.fillStyle = `hsl(${currentHue}, 95%, 60%, 0.08)`;
         ctx.fill();
@@ -147,40 +167,28 @@ function animate() {
         animationId = requestAnimationFrame(animate);
     } else {
         isAnimationComplete = true;
-        renderFrame(sides, 0); // Clean up the final render state
+        renderFrame(sides, 0); // Final solid pass
     }
 }
 
 exportButton.addEventListener('click', () => {
-    // Optional check: Ensure points exist before trying to download a blank canvas
     if (points.length === 0) return;
 
-    // Create a temporary, off-screen canvas matching your exact canvas dimensions
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // Draw a solid dark background on the temporary canvas to preserve the neon contrast
-    tempCtx.fillStyle = '#121214'; // Match this to your webpage container background color
+    tempCtx.fillStyle = '#121214'; 
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    // Draw your active canvas directly on top of that dark background
     tempCtx.drawImage(canvas, 0, 0);
 
-    // Convert the merged image data into a downloadable PNG URL
     const imageURL = tempCanvas.toDataURL('image/png');
-
-    // Create a temporary hidden link element to force-trigger the browser download download
     const downloadLink = document.createElement('a');
     downloadLink.href = imageURL;
     
-    // Generate a clean, descriptive file name showing the shape settings
-    const sidesName = sideInput.value;
-    const skipName = skipInput.value;
-    downloadLink.download = `geometric-art-${sidesName}sides-skip${skipName}.png`;
+    downloadLink.download = `geometric-art-${sideInput.value}sides-skip${skipInput.value}.png`;
 
-    // Programmatically click the link to save the file, then remove it from memory
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
