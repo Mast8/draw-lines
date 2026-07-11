@@ -15,6 +15,9 @@ const glowVal = document.getElementById('glowVal');
 
 const exportButton = document.getElementById('exportBtn');
 
+const svgExportButton = document.getElementById('svgExportBtn');
+
+
 // Track the active state globally
 let currentHue = 280; 
 let animationId = null;
@@ -192,4 +195,27 @@ exportButton.addEventListener('click', () => {
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
+});
+
+svgExportButton.addEventListener('click', () => {
+    if (points.length === 0) return;
+    
+    const strokeColor = `hsl(${currentHue}, 95%, 60%)`;
+    const fillColor = `hsl(${currentHue}, 95%, 60%, 0.08)`;
+    
+    // Construct the SVG path string from our computed coordinates
+    let pathData = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+        pathData += ` L ${points[i].x} ${points[i].y}`;
+    }
+    pathData += ' Z'; // Close path
+    
+    const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvas.width} ${canvas.height}" width="${canvas.width}" height="${canvas.height}">
+  <rect width="100%" height="100%" fill="#121214"/>
+  <path d="${pathData}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+    navigator.clipboard.writeText(svgCode).then(() => {
+        alert('Vector SVG markup copied to clipboard!');
+    }).catch(err => console.error('Could not copy SVG data: ', err));
 });
